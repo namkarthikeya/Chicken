@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KV Chicken Center</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+
+  <main id="loginSection" class="max-w-md mx-auto mt-12 p-4">
+    <div class="bg-white p-6 rounded-lg shadow-md">
+      <h1 class="text-2xl font-bold mb-2">Welcome to KV Chicken Center</h1>
+      <p class="text-gray-600 mb-6">Enter your details to continue.</p>
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="mb-4">
+          <label class="block text-gray-700 font-medium mb-1" for="loginName">Name</label>
+          <input type="text" id="loginName" required autocomplete="name" class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Enter your name">
+        </div>
+        <div class="mb-4">
+          <label class="block text-gray-700 font-medium mb-1" for="loginMobile">Mobile Number</label>
+          <input type="tel" id="loginMobile" required inputmode="numeric" autocomplete="tel" pattern="[0-9]{10}" maxlength="10" title="Enter a 10-digit mobile number" class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Enter your 10-digit mobile number">
+        </div>
+        <div class="mb-4">
+          <label class="block text-gray-700 font-medium mb-1" for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" required autocomplete="email" class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Enter your email address">
+        </div>
+        <div class="mb-6">
+          <label class="block text-gray-700 font-medium mb-1" for="loginRole">Continue as</label>
+          <select id="loginRole" required class="w-full border rounded p-2 bg-white focus:outline-none focus:ring-2 focus:ring-red-500">
+            <option value="customer">Customer</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition">Continue</button>
+      </form>
+    </div>
+  </main>
+
+  <div id="protectedApp" class="hidden">
+  <!-- Navigation Bar -->
+  <nav class="bg-red-600 text-white p-4 shadow-md flex justify-between items-center">
+    <h1 class="text-xl font-bold">🐔 KV Chicken Center</h1>
+    <div class="flex items-center gap-3">
+      <span id="currentUserLabel" class="text-sm"></span>
+      <button type="button" onclick="logout()" class="px-3 py-1 bg-white text-red-600 rounded font-semibold">Log out</button>
+    </div>
+  </nav>
+
+  <div class="max-w-4xl mx-auto mt-6 p-4">
+
+    <!-- CUSTOMER SECTION -->
+    <div id="customerSection">
+      <!-- Shop Info Header -->
+      <div class="bg-white p-6 rounded-lg shadow-md mb-6 border-l-4 border-red-600">
+        <h2 id="displayShopName" class="text-2xl font-bold text-gray-800">Loading Shop Details...</h2>
+        <p id="displayShopAddress" class="text-gray-600 mt-1">Address: Not configured yet.</p>
+        <div class="mt-3">
+          <span class="font-semibold text-gray-700">Contact / Helpline:</span>
+          <div id="displayShopContacts" class="flex flex-wrap gap-2 mt-1"></div>
+        </div>
+      </div>
+
+      <!-- Booking Form -->
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-xl font-bold mb-4 border-b pb-2">Place Your Order (Pay on Delivery / Pickup)</h3>
+        <form id="bookingForm" onsubmit="handleCustomerBooking(event)">
+          <div class="mb-4">
+            <label class="block text-gray-700 font-medium mb-1" for="custName">Name</label>
+            <input type="text" id="custName" required class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Enter your name">
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-gray-700 font-medium mb-1" for="custMobile">Mobile Number</label>
+            <input type="tel" id="custMobile" required class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Enter your 10-digit mobile number">
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-gray-700 font-medium mb-1" for="custAddress">Delivery Address</label>
+            <textarea id="custAddress" required rows="2" class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Enter full address"></textarea>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-gray-700 font-medium mb-1">Chicken Quantity</label>
+              <div class="flex gap-2">
+                <input type="number" step="0.1" min="0" id="chickenQty" class="w-2/3 border rounded p-2" placeholder="e.g. 1.5">
+                <select id="chickenUnit" class="w-1/3 border rounded p-2 bg-gray-50">
+                  <option value="kg">kg</option>
+                  <option value="grams">grams</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-gray-700 font-medium mb-1">Eggs Quantity (Count)</label>
+              <input type="number" min="0" id="eggsQty" class="w-full border rounded p-2" placeholder="e.g. 6, 12, 30">
+            </div>
+          </div>
+
+          <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition">
+            Book Now
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- SUPER ADMIN SECTION -->
+    <div id="adminSection" class="hidden">
+      <!-- Shop Details Management -->
+      <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+        <h3 class="text-xl font-bold mb-4 border-b pb-2">Super Admin: Manage Shop Details</h3>
+        <form onsubmit="handleSaveShopDetails(event)">
+          <div class="mb-4">
+            <label class="block text-gray-700 font-medium mb-1">Shop Name</label>
+            <input type="text" id="adminShopName" required class="w-full border rounded p-2">
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-gray-700 font-medium mb-1">Shop Address</label>
+            <textarea id="adminShopAddress" required rows="2" class="w-full border rounded p-2"></textarea>
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-gray-700 font-medium mb-1">Contact Mobile Numbers</label>
+            <div id="phoneInputsContainer" class="space-y-2"></div>
+            <button type="button" onclick="addPhoneInput()" class="mt-2 text-sm text-red-600 font-semibold hover:underline">
+              + Add Another Mobile Number
+            </button>
+          </div>
+
+          <button type="submit" class="bg-gray-800 text-white font-bold py-2 px-4 rounded hover:bg-gray-900">
+            Save Shop Details
+          </button>
+        </form>
+      </div>
+
+      <!-- Customer Orders Dashboard -->
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <div class="flex justify-between items-center border-b pb-2 mb-4">
+          <h3 class="text-xl font-bold">Customer Bookings Dashboard</h3>
+          <button onclick="clearAllOrders()" class="text-sm bg-red-100 text-red-600 px-3 py-1 rounded hover:bg-red-200">Clear All</button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-gray-100 text-gray-700 border-b">
+                <th class="p-2">Time</th>
+                <th class="p-2">Customer Name</th>
+                <th class="p-2">Customer Mobile</th>
+                <th class="p-2">Address</th>
+                <th class="p-2">Chicken</th>
+                <th class="p-2">Eggs</th>
+                <th class="p-2">Action</th>
+              </tr>
+            </thead>
+            <tbody id="ordersTableBody">
+              <!-- Orders injected dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  </div>
+
+  <script>
+    // State management using LocalStorage
+    let shopInfo = JSON.parse(localStorage.getItem('shopInfo')) || {
+      name: "KV Chicken Center",
+      address: "Main Road, Near Bus Stand, Hyderabad",
+      phones: ["9876543210"]
+    };
+
+    let orders = JSON.parse(localStorage.getItem('orders')) || [];
+    let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
+    const superAdminEmail = "Yaswanthreddyshavva2@gmail.com";
+
+    if (shopInfo.name === "Sri Lakshmi Chicken & Eggs") {
+      shopInfo.name = "KV Chicken Center";
+      localStorage.setItem('shopInfo', JSON.stringify(shopInfo));
+    }
+
+    // Initialize UI
+    document.addEventListener("DOMContentLoaded", () => {
+      renderShopDetails();
+      renderOrders();
+      if (currentUser && currentUser.name && currentUser.mobile && currentUser.email &&
+          ['customer', 'admin'].includes(currentUser.role) &&
+          (currentUser.role !== 'admin' || currentUser.email.toLowerCase() === superAdminEmail.toLowerCase())) {
+        openUserPage();
+      } else {
+        currentUser = null;
+        localStorage.removeItem('currentUser');
+      }
+    });
+
+    function handleLogin(e) {
+      e.preventDefault();
+      currentUser = {
+        name: document.getElementById('loginName').value.trim(),
+        mobile: document.getElementById('loginMobile').value.trim(),
+        email: document.getElementById('loginEmail').value.trim(),
+        role: document.getElementById('loginEmail').value.trim().toLowerCase() === superAdminEmail.toLowerCase()
+          ? 'admin'
+          : document.getElementById('loginRole').value
+      };
+
+      if (!currentUser.name || !/^\d{10}$/.test(currentUser.mobile) ||
+          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentUser.email)) {
+        alert("Enter your name, a valid 10-digit mobile number, and a valid email address.");
+        return;
+      }
+
+      if (currentUser.role === 'admin' && currentUser.email.toLowerCase() !== superAdminEmail.toLowerCase()) {
+        alert("Only the authorized super admin email can access the admin dashboard.");
+        return;
+      }
+
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      openUserPage();
+    }
+
+    function openUserPage() {
+      document.getElementById('loginSection').classList.add('hidden');
+      document.getElementById('protectedApp').classList.remove('hidden');
+      document.getElementById('currentUserLabel').innerText = `${currentUser.name} (${currentUser.role === 'admin' ? 'Super Admin' : 'Customer'})`;
+      if (currentUser.role === 'customer') {
+        document.getElementById('custName').value = currentUser.name;
+        document.getElementById('custMobile').value = currentUser.mobile;
+      }
+      switchTab(currentUser.role);
+    }
+
+    function logout() {
+      localStorage.removeItem('currentUser');
+      currentUser = null;
+      document.getElementById('protectedApp').classList.add('hidden');
+      document.getElementById('loginSection').classList.remove('hidden');
+      document.getElementById('loginForm').reset();
+    }
+
+    // Navigation Tab Switcher
+    function switchTab(tab) {
+      if (!currentUser || tab !== currentUser.role) {
+        return;
+      }
+      if (tab === 'customer') {
+        document.getElementById('customerSection').classList.remove('hidden');
+        document.getElementById('adminSection').classList.add('hidden');
+      } else {
+        document.getElementById('customerSection').classList.add('hidden');
+        document.getElementById('adminSection').classList.remove('hidden');
+        populateAdminForm();
+      }
+    }
+
+    // Display Shop Details on Customer View
+    function renderShopDetails() {
+      document.getElementById('displayShopName').innerText = shopInfo.name;
+      document.getElementById('displayShopAddress').innerText = "Address: " + shopInfo.address;
+      
+      const contactsContainer = document.getElementById('displayShopContacts');
+      contactsContainer.innerHTML = '';
+      shopInfo.phones.forEach(phone => {
+        if(phone.trim()) {
+          const span = document.createElement('span');
+          span.className = "bg-red-100 text-red-800 text-sm font-medium px-2.5 py-0.5 rounded";
+          span.innerText = phone;
+          contactsContainer.appendChild(span);
+        }
+      });
+    }
+
+    // Admin Phone Input Handlers
+    function addPhoneInput(value = "") {
+      const container = document.getElementById('phoneInputsContainer');
+      const div = document.createElement('div');
+      div.className = "flex gap-2 items-center";
+      div.innerHTML = `
+        <input type="tel" class="admin-phone-input w-full border rounded p-2" value="${value}" placeholder="Enter mobile number">
+        <button type="button" onclick="this.parentElement.remove()" class="text-red-500 font-bold px-2">X</button>
+      `;
+      container.appendChild(div);
+    }
+
+    function populateAdminForm() {
+      document.getElementById('adminShopName').value = shopInfo.name;
+      document.getElementById('adminShopAddress').value = shopInfo.address;
+      const container = document.getElementById('phoneInputsContainer');
+      container.innerHTML = '';
+      shopInfo.phones.forEach(phone => addPhoneInput(phone));
+    }
+
+    function handleSaveShopDetails(e) {
+      e.preventDefault();
+      const phoneInputs = document.querySelectorAll('.admin-phone-input');
+      const phones = Array.from(phoneInputs).map(input => input.value.trim()).filter(val => val !== "");
+
+      shopInfo = {
+        name: document.getElementById('adminShopName').value,
+        address: document.getElementById('adminShopAddress').value,
+        phones: phones
+      };
+
+      localStorage.setItem('shopInfo', JSON.stringify(shopInfo));
+      renderShopDetails();
+      alert("Shop details updated successfully!");
+    }
+
+    // Customer Order Handling
+    function handleCustomerBooking(e) {
+      e.preventDefault();
+      const chickenVal = document.getElementById('chickenQty').value;
+      const chickenUnit = document.getElementById('chickenUnit').value;
+      const eggsVal = document.getElementById('eggsQty').value;
+
+      if (!chickenVal && !eggsVal) {
+        alert("Please enter a quantity for either Chicken or Eggs.");
+        return;
+      }
+
+      const newOrder = {
+        id: Date.now(),
+        name: document.getElementById('custName').value.trim(),
+        mobile: document.getElementById('custMobile').value,
+        address: document.getElementById('custAddress').value,
+        chicken: chickenVal ? `${chickenVal} ${chickenUnit}` : "None",
+        eggs: eggsVal ? `${eggsVal} pcs` : "None",
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      orders.unshift(newOrder);
+      localStorage.setItem('orders', JSON.stringify(orders));
+      document.getElementById('bookingForm').reset();
+      document.getElementById('custName').value = currentUser.name;
+      document.getElementById('custMobile').value = currentUser.mobile;
+      renderOrders();
+      alert("Booking placed successfully! The shop admin will contact you shortly.");
+    }
+
+    // Admin Dashboard Render
+    function renderOrders() {
+      const tbody = document.getElementById('ordersTableBody');
+      tbody.innerHTML = '';
+
+      if (orders.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-500">No orders received yet.</td></tr>`;
+        return;
+      }
+
+      orders.forEach(order => {
+        const tr = document.createElement('tr');
+        tr.className = "border-b hover:bg-gray-50";
+        const values = [
+          [order.time, "p-2 text-sm text-gray-500"],
+          [order.name || "—", "p-2 font-medium"],
+          [order.mobile, "p-2 font-semibold text-blue-600"],
+          [order.address, "p-2 text-sm"],
+          [order.chicken, "p-2 font-medium"],
+          [order.eggs, "p-2 font-medium"]
+        ];
+
+        values.forEach(([value, className], index) => {
+          const td = document.createElement('td');
+          td.className = className;
+          if (index === 2) {
+            const link = document.createElement('a');
+            link.href = `tel:${value}`;
+            link.textContent = value;
+            td.appendChild(link);
+          } else {
+            td.textContent = value;
+          }
+          tr.appendChild(td);
+        });
+
+        const actionCell = document.createElement('td');
+        actionCell.className = "p-2";
+        const deleteButton = document.createElement('button');
+        deleteButton.type = "button";
+        deleteButton.className = "text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600";
+        deleteButton.textContent = "Delete";
+        deleteButton.addEventListener('click', () => deleteOrder(order.id));
+        actionCell.appendChild(deleteButton);
+        tr.appendChild(actionCell);
+        tbody.appendChild(tr);
+      });
+    }
+
+    function deleteOrder(id) {
+      orders = orders.filter(o => o.id !== id);
+      localStorage.setItem('orders', JSON.stringify(orders));
+      renderOrders();
+    }
+
+    function clearAllOrders() {
+      if (confirm("Are you sure you want to clear all orders?")) {
+        orders = [];
+        localStorage.removeItem('orders');
+        renderOrders();
+      }
+    }
+  </script>
+</body>
+</html>
