@@ -27,10 +27,14 @@
         </div>
         <div class="mb-6">
           <label class="block text-gray-700 font-medium mb-1" for="loginRole">Continue as</label>
-          <select id="loginRole" required class="w-full border rounded p-2 bg-white focus:outline-none focus:ring-2 focus:ring-red-500">
+          <select id="loginRole" required onchange="updateLoginFields()" class="w-full border rounded p-2 bg-white focus:outline-none focus:ring-2 focus:ring-red-500">
             <option value="customer">Customer</option>
             <option value="admin">Admin</option>
           </select>
+        </div>
+        <div id="adminPasswordField" class="mb-6 hidden">
+          <label class="block text-gray-700 font-medium mb-1" for="loginPassword">Admin Password</label>
+          <input type="password" id="loginPassword" autocomplete="current-password" class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Enter your admin password">
         </div>
         <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition">Continue</button>
       </form>
@@ -139,20 +143,21 @@
       <div class="bg-white p-6 rounded-lg shadow-md">
         <div class="flex justify-between items-center border-b pb-2 mb-4">
           <h3 class="text-xl font-bold">Customer Bookings Dashboard</h3>
-          <button onclick="clearAllOrders()" class="text-sm bg-red-100 text-red-600 px-3 py-1 rounded hover:bg-red-200">Clear All</button>
+          <button type="button" onclick="loadOrders()" class="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded hover:bg-gray-200">Refresh Orders</button>
         </div>
 
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="bg-gray-100 text-gray-700 border-b">
-                <th class="p-2">Time</th>
+                <th class="p-2">Date / Time</th>
                 <th class="p-2">Customer Name</th>
                 <th class="p-2">Customer Mobile</th>
+                <th class="p-2">Customer Email</th>
                 <th class="p-2">Address</th>
                 <th class="p-2">Chicken</th>
                 <th class="p-2">Eggs</th>
-                <th class="p-2">Action</th>
+                <th class="p-2">Status</th>
               </tr>
             </thead>
             <tbody id="ordersTableBody">
@@ -166,30 +171,48 @@
   </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // State management using LocalStorage
+    const SUPABASE_URL = "https://jrvbobsykttywydbwmj.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_AvTVIBDauj86hnVqC65qJg_7xvDTR0_";
+    const superAdminEmail = "Yaswanthreddyshavva2@gmail.com";
+    const orderStatuses = ["New", "Preparing", "Out for delivery", "Delivered", "Cancelled"];
+    const supabaseClient = SUPABASE_URL.startsWith("https://") &&
+      SUPABASE_ANON_KEY !== "YOUR_SUPABASE_ANON_KEY"
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
+
     let shopInfo = JSON.parse(localStorage.getItem('shopInfo')) || {
       name: "KV Chicken Center",
       address: "Main Road, Near Bus Stand, Hyderabad",
       phones: ["9876543210"]
     };
 
-    let orders = JSON.parse(localStorage.getItem('orders')) || [];
     let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
-    const superAdminEmail = "Yaswanthreddyshavva2@gmail.com";
+    let orders = [];
 
     if (shopInfo.name === "Sri Lakshmi Chicken & Eggs") {
       shopInfo.name = "KV Chicken Center";
       localStorage.setItem('shopInfo', JSON.stringify(shopInfo));
     }
 
-    // Initialize UI
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", async () => {
       renderShopDetails();
-      renderOrders();
-      if (currentUser && currentUser.name && currentUser.mobile && currentUser.email &&
-          ['customer', 'admin'].includes(currentUser.role) &&
-          (currentUser.role !== 'admin' || currentUser.email.toLowerCase() === superAdminEmail.toLowerCase())) {
+      updateLoginFields();
+      if (supabaseClient) {
+        const { data, error } = await supabaseClient.auth.getSession();
+        if (error) {
+          alert(`Could not restore the admin session: ${error.message}`);
+        } else if (data.session?.user?.email?.toLowerCase() === superAdminEmail.toLowerCase()) {
+          currentUser = { name: data.session.user.email, email: data.session.user.email, role: 'admin' };
+        } else if (data.session) {
+          await supabaseClient.auth.signOut();
+        }
+      }
+
+      if (currentUser?.role === 'admin' && currentUser.email?.toLowerCase() === superAdminEmail.toLowerCase()) {
+        openUserPage();
+      } else if (currentUser?.role === 'customer' && currentUser.name && currentUser.mobile && currentUser.email) {
         openUserPage();
       } else {
         currentUser = null;
@@ -197,25 +220,52 @@
       }
     });
 
-    function handleLogin(e) {
+    function updateLoginFields() {
+      const isAdmin = document.getElementById('loginRole').value === 'admin';
+      document.getElementById('loginName').required = !isAdmin;
+      document.getElementById('loginMobile').required = !isAdmin;
+      document.getElementById('loginName').parentElement.classList.toggle('hidden', isAdmin);
+      document.getElementById('loginMobile').parentElement.classList.toggle('hidden', isAdmin);
+      document.getElementById('adminPasswordField').classList.toggle('hidden', !isAdmin);
+      document.getElementById('loginPassword').required = isAdmin;
+    }
+
+    async function handleLogin(e) {
       e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim();
+      if (document.getElementById('loginRole').value === 'admin') {
+        if (!supabaseClient) {
+          alert("Supabase is not configured yet. Add your project URL and anon key to index.html.");
+          return;
+        }
+        if (email.toLowerCase() !== superAdminEmail.toLowerCase()) {
+          alert("Only the authorized super admin email can access the admin dashboard.");
+          return;
+        }
+
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+          email,
+          password: document.getElementById('loginPassword').value
+        });
+        if (error) {
+          alert(`Admin sign-in failed: ${error.message}`);
+          return;
+        }
+        currentUser = { name: data.user.email, email: data.user.email, role: 'admin' };
+        openUserPage();
+        return;
+      }
+
       currentUser = {
         name: document.getElementById('loginName').value.trim(),
         mobile: document.getElementById('loginMobile').value.trim(),
-        email: document.getElementById('loginEmail').value.trim(),
-        role: document.getElementById('loginEmail').value.trim().toLowerCase() === superAdminEmail.toLowerCase()
-          ? 'admin'
-          : document.getElementById('loginRole').value
+        email,
+        role: 'customer'
       };
 
       if (!currentUser.name || !/^\d{10}$/.test(currentUser.mobile) ||
           !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentUser.email)) {
         alert("Enter your name, a valid 10-digit mobile number, and a valid email address.");
-        return;
-      }
-
-      if (currentUser.role === 'admin' && currentUser.email.toLowerCase() !== superAdminEmail.toLowerCase()) {
-        alert("Only the authorized super admin email can access the admin dashboard.");
         return;
       }
 
@@ -234,12 +284,20 @@
       switchTab(currentUser.role);
     }
 
-    function logout() {
+    async function logout() {
+      if (currentUser?.role === 'admin' && supabaseClient) {
+        const { error } = await supabaseClient.auth.signOut();
+        if (error) {
+          alert(`Could not sign out: ${error.message}`);
+          return;
+        }
+      }
       localStorage.removeItem('currentUser');
       currentUser = null;
       document.getElementById('protectedApp').classList.add('hidden');
       document.getElementById('loginSection').classList.remove('hidden');
       document.getElementById('loginForm').reset();
+      updateLoginFields();
     }
 
     // Navigation Tab Switcher
@@ -254,6 +312,7 @@
         document.getElementById('customerSection').classList.add('hidden');
         document.getElementById('adminSection').classList.remove('hidden');
         populateAdminForm();
+        loadOrders();
       }
     }
 
@@ -311,11 +370,16 @@
     }
 
     // Customer Order Handling
-    function handleCustomerBooking(e) {
+    async function handleCustomerBooking(e) {
       e.preventDefault();
       const chickenVal = document.getElementById('chickenQty').value;
       const chickenUnit = document.getElementById('chickenUnit').value;
       const eggsVal = document.getElementById('eggsQty').value;
+
+      if (!supabaseClient) {
+        alert("Orders cannot be saved yet. Add your Supabase project URL and anon key to index.html first.");
+        return;
+      }
 
       if (!chickenVal && !eggsVal) {
         alert("Please enter a quantity for either Chicken or Eggs.");
@@ -323,31 +387,59 @@
       }
 
       const newOrder = {
-        id: Date.now(),
-        name: document.getElementById('custName').value.trim(),
-        mobile: document.getElementById('custMobile').value,
-        address: document.getElementById('custAddress').value,
+        customer_name: document.getElementById('custName').value.trim(),
+        customer_mobile: document.getElementById('custMobile').value.trim(),
+        customer_email: currentUser.email,
+        delivery_address: document.getElementById('custAddress').value.trim(),
         chicken: chickenVal ? `${chickenVal} ${chickenUnit}` : "None",
         eggs: eggsVal ? `${eggsVal} pcs` : "None",
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        status: "New"
       };
 
-      orders.unshift(newOrder);
-      localStorage.setItem('orders', JSON.stringify(orders));
+      const { error } = await supabaseClient.from('orders').insert(newOrder);
+      if (error) {
+        alert(`Your order could not be saved: ${error.message}`);
+        return;
+      }
+
       document.getElementById('bookingForm').reset();
       document.getElementById('custName').value = currentUser.name;
       document.getElementById('custMobile').value = currentUser.mobile;
-      renderOrders();
-      alert("Booking placed successfully! The shop admin will contact you shortly.");
+      alert("Your order was saved successfully. The shop will contact you shortly.");
     }
 
-    // Admin Dashboard Render
+    async function loadOrders() {
+      const tbody = document.getElementById('ordersTableBody');
+      if (!tbody || currentUser?.role !== 'admin') {
+        return;
+      }
+      if (!supabaseClient) {
+        tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-red-600">Supabase is not configured. Add the project URL and anon key to index.html.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gray-500">Loading orders...</td></tr>';
+      const { data, error } = await supabaseClient
+        .from('orders')
+        .select('id, customer_name, customer_mobile, customer_email, delivery_address, chicken, eggs, status, created_at')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-red-600">Could not load orders. Check your connection and Supabase policies.</td></tr>';
+        alert(`Could not load orders: ${error.message}`);
+        return;
+      }
+      orders = data;
+      renderOrders();
+    }
+
     function renderOrders() {
       const tbody = document.getElementById('ordersTableBody');
+      if (!tbody) return;
       tbody.innerHTML = '';
 
       if (orders.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-500">No orders received yet.</td></tr>`;
+        tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gray-500">No orders received yet.</td></tr>';
         return;
       }
 
@@ -355,10 +447,11 @@
         const tr = document.createElement('tr');
         tr.className = "border-b hover:bg-gray-50";
         const values = [
-          [order.time, "p-2 text-sm text-gray-500"],
-          [order.name || "—", "p-2 font-medium"],
-          [order.mobile, "p-2 font-semibold text-blue-600"],
-          [order.address, "p-2 text-sm"],
+          [new Date(order.created_at).toLocaleString(), "p-2 text-sm text-gray-500"],
+          [order.customer_name || "—", "p-2 font-medium"],
+          [order.customer_mobile, "p-2 font-semibold text-blue-600"],
+          [order.customer_email || "—", "p-2 text-sm"],
+          [order.delivery_address, "p-2 text-sm"],
           [order.chicken, "p-2 font-medium"],
           [order.eggs, "p-2 font-medium"]
         ];
@@ -366,7 +459,7 @@
         values.forEach(([value, className], index) => {
           const td = document.createElement('td');
           td.className = className;
-          if (index === 2) {
+          if (index === 2 && value) {
             const link = document.createElement('a');
             link.href = `tel:${value}`;
             link.textContent = value;
@@ -377,30 +470,37 @@
           tr.appendChild(td);
         });
 
-        const actionCell = document.createElement('td');
-        actionCell.className = "p-2";
-        const deleteButton = document.createElement('button');
-        deleteButton.type = "button";
-        deleteButton.className = "text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600";
-        deleteButton.textContent = "Delete";
-        deleteButton.addEventListener('click', () => deleteOrder(order.id));
-        actionCell.appendChild(deleteButton);
-        tr.appendChild(actionCell);
+        const statusCell = document.createElement('td');
+        statusCell.className = "p-2";
+        const statusSelect = document.createElement('select');
+        statusSelect.className = "border rounded p-1 bg-white";
+        statusSelect.setAttribute('aria-label', `Update order status for ${order.customer_name}`);
+        orderStatuses.forEach(status => {
+          const option = document.createElement('option');
+          option.value = status;
+          option.textContent = status;
+          statusSelect.appendChild(option);
+        });
+        statusSelect.value = order.status;
+        statusSelect.addEventListener('change', () => updateOrderStatus(order.id, statusSelect.value));
+        statusCell.appendChild(statusSelect);
+        tr.appendChild(statusCell);
         tbody.appendChild(tr);
       });
     }
 
-    function deleteOrder(id) {
-      orders = orders.filter(o => o.id !== id);
-      localStorage.setItem('orders', JSON.stringify(orders));
-      renderOrders();
-    }
-
-    function clearAllOrders() {
-      if (confirm("Are you sure you want to clear all orders?")) {
-        orders = [];
-        localStorage.removeItem('orders');
-        renderOrders();
+    async function updateOrderStatus(id, status) {
+      if (!orderStatuses.includes(status)) {
+        alert("That order status is not valid.");
+        return;
+      }
+      const { error } = await supabaseClient
+        .from('orders')
+        .update({ status })
+        .eq('id', id);
+      if (error) {
+        alert(`Could not update order status: ${error.message}`);
+        await loadOrders();
       }
     }
   </script>
